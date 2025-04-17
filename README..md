@@ -25,7 +25,7 @@ Bu proje, WOKWI simülasyon platformu üzerinde tasarlanmış ve test edilmişti
 ## Görseller
 
 # Devre Şeması
-![Devre_Semasi](images/Devre_Semasi.png)
+![DevreSemasi](images/DevreSemasi.png)
 
 # Oyun İçi Görüntü 1
 ![InGameScreenShot_1](images/IngameScreenShot_1.png)
