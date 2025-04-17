@@ -18,18 +18,23 @@ int debounceTime = 50;
 String simonSays = "";
 String youSay = "";
 
+int score = 0;
+int highScore = 0;
+
+int gameSpeed = 500; //500 by default, delay between leds. lower value = game starts harder can't be less than 150.
+
+
 bool compare(int index){
   if (simonSays.substring(0, index).equals(youSay)) return true;
-  Serial.println("SimonSays: " + simonSays);
   return false;
 }
 
 void listenSimon(){
   for (int i = 0; i < simonSays.length(); i++){
     digitalWrite(simonSays[i] - '0' + 2, HIGH);
-    delay(500);
+    delay(gameSpeed);
     digitalWrite(simonSays[i] - '0' + 2, LOW);
-    delay(500);
+    delay(gameSpeed);
   }
 }
 
@@ -37,10 +42,10 @@ void say(){
   int count = 1;
   while (count <= simonSays.length()){
     youSay += input();
-    Serial.println(youSay);
 
     if (compare(count) == false){
       gameOver();
+      WaitForStart();
       break;
     }
     count++;
@@ -58,6 +63,7 @@ void gameOver(){
   resetScore();
 }
 
+float gameSpeedMultiplier = 2;
 void advance(){
   delay(400);
   youSay = "";
@@ -65,6 +71,14 @@ void advance(){
   successSound();
   simonSays += random(0, 4); 
 
+
+  if (gameSpeed > 150){
+    gameSpeed = 500 - 10*log(gameSpeedMultiplier); 
+  }
+  else{
+    gameSpeed = 150;
+  }
+  gameSpeedMultiplier *= 2;
 }
 
 char input(){
@@ -82,19 +96,19 @@ char input(){
     if (millis() - lastDebounceTime > debounceTime){
 
       if (readR == LOW && buttonStateR == HIGH){
-        data = '0';
+        data = '3';
       }
       buttonStateR = readR;
       if (readG == LOW && buttonStateG == HIGH){
-        data = '1';
+        data = '2';
       }
       buttonStateG = readG;
       if (readB == LOW && buttonStateB == HIGH){
-        data = '2';
+        data = '1';
       }
       buttonStateB = readB;
       if (readY == LOW && buttonStateY == HIGH){
-        data = '3';
+        data = '0';
       }
       buttonStateY = readY;
     }
@@ -124,6 +138,7 @@ void successSound(){
     delay(40);
   }
 }
+
 void failSound(){
   int i = 250;
   int mul = 1;
@@ -136,40 +151,78 @@ void failSound(){
     delay(100);
   }
 }
+
 void inputSound(){
   tone(buzzer, 600);
   delay(150);
   noTone(buzzer);
 }
 
-int score = 0;
-int highScore = 0;
 void incScore(){
   score++;
 }
+
 void resetScore(){
-  score = 0;
-}
-void initHighScore(){
-  highScore = EEPROM.read(0);
-  Serial.println("EEPROM: " + (String)EEPROM.read(0));
-}
-void updateHighScore(){
-  if (score > highScore){
-    EEPROM.update(0, score - 1);
-    highScore = EEPROM.read(0);
-    Serial.println("EEPROM UPDATED: " + (String)EEPROM.read(0));
-  }
-}
-void dispScore(){
-  lcd.setCursor(0,0);
-  lcd.print("SCORE: " + (String)score);
-  lcd.setCursor(0,1);
-  lcd.print("HIGH SCORE: " + (String)highScore);
+  score = -1;
 }
 
+void initHighScore(){
+  highScore = EEPROM.read(0);
+}
+
+void updateHighScore(){
+  if (score > highScore){
+    EEPROM.update(0, score);
+    highScore = EEPROM.read(0);
+  }
+}
+
+void dispScore(){
+  lcd.setCursor(0,0);
+  lcd.print("SCORE: " + (String)(score));
+  lcd.setCursor(0,1);
+  lcd.print("HIGH SCORE: " + (String)(highScore));
+}
+
+void VeryFirstInit(){
+  int eepromLength = EEPROM.length();
+  if (EEPROM.read(512) != "\0"){
+    for (int i = 0; i < eepromLength; i++){
+      EEPROM.write(i, "\0");
+    }
+    EEPROM.write(0, 0);
+  }
+}
+
+void WaitForStart(){
+  ClearLCD();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Press Any Key");
+  lcd.setCursor(0, 1);
+  lcd.print("To Start Game");
+
+  while (true){
+    char inp = input();
+    if (inp == '0' || inp == '1' || inp == '2' || inp == '3'){
+      break;
+    }
+  }
+
+  ClearLCD();
+}
+
+void ClearLCD(){
+  lcd.setCursor(0, 0);
+  lcd.print("                ");
+  lcd.setCursor(0, 1);
+  lcd.print("                ");
+
+}
+
+
 void setup() {
-  EEPROM.write(0, 0);
+  VeryFirstInit(); // This function only works if it is arduino's first initilization to clear all EEPROM Memory
   pinMode(ledR, INPUT);
   pinMode(ledG, INPUT);
   pinMode(ledB, INPUT);
@@ -184,20 +237,23 @@ void setup() {
   Serial.begin(9600);
 
 
+
+
+
+
   initHighScore();
   lcd.begin(16,2);
   lcd.print("Hello");
-  delay(2000);
+  delay(1000);
 
+  WaitForStart();
+  randomSeed(millis());
   simonSays += random(0, 4); 
-
 }
 
 void loop() {
-
   listenSimon();
   say();
-  dispScore();
   advance();
-
+  dispScore();
 }
